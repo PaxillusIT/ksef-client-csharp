@@ -1,8 +1,8 @@
 using KSeF.Client.Api.Builders.AuthorizationPermissions;
 using KSeF.Client.Core.Models.Authorization;
 using KSeF.Client.Core.Models.Permissions;
-using KSeF.Client.Core.Models.Permissions.Entity;
 using KSeF.Client.Core.Models.Permissions.AuthorizationEntity;
+using KSeF.Client.Core.Models.Permissions.Entity;
 using KSeF.Client.Tests.Utils;
 using StandardPermissionType = KSeF.Client.Core.Models.Permissions.AuthorizationEntity.StandardPermissionType;
 
@@ -12,6 +12,8 @@ namespace KSeF.Client.Tests.Core.E2E.Permissions.AuthorizationPermission;
 public class AuthorizationPermissionsE2ETests : TestBase
 {
     private readonly AuthorizationPermissionsScenarioE2EFixture Fixture;
+    
+    private const int OperationSuccessfulStatusCode = 200;
     private string accessToken = string.Empty;
 
     public AuthorizationPermissionsE2ETests()
@@ -38,18 +40,17 @@ public class AuthorizationPermissionsE2ETests : TestBase
         // Assert
         Assert.NotNull(Fixture.GrantResponse);
         Assert.True(!string.IsNullOrEmpty(Fixture.GrantResponse.OperationReferenceNumber));
-
         #endregion
 
         await Task.Delay(SleepTime);
 
         #region Wyszukaj — powinny się pojawić
         // Act
-        PagedRolesResponse<EntityRole> entityRolesPaged = await SearchGrantedRolesAsync();
+        PagedAuthorizationsResponse<AuthorizationGrant> entityRolesPaged = await SearchGrantedRolesAsync();
 
         // Assert
         Assert.NotNull(entityRolesPaged);
-        Assert.Empty(entityRolesPaged.Roles);
+        Assert.NotEmpty(entityRolesPaged.AuthorizationGrants);
         Fixture.SearchResponse = entityRolesPaged;
 
         #endregion
@@ -59,24 +60,26 @@ public class AuthorizationPermissionsE2ETests : TestBase
         #region Cofnij uprawnienia
         // Act
         await RevokePermissionsAsync();
+        Assert.NotNull(Fixture.RevokeStatusResults);
+        Assert.NotEmpty(Fixture.RevokeStatusResults);
+        Assert.Equal(Fixture.RevokeStatusResults.Count, Fixture.SearchResponse.AuthorizationGrants.Count);
+        Assert.All(Fixture.RevokeStatusResults, r =>
+            Assert.True(r.Status.Code == OperationSuccessfulStatusCode,
+                $"Operacja cofnięcia uprawnień nie powiodła się: {r.Status.Description}, szczegóły: [{string.Join(",", r.Status.Details ?? Array.Empty<string>())}]")
+        );
 
         #endregion
 
         await Task.Delay(SleepTime);
 
         #region Wyszukaj ponownie — nie powinno być wpisów
-        PagedRolesResponse<EntityRole> entityRolesAfterRevoke =
+        PagedAuthorizationsResponse<AuthorizationGrant> entityRolesAfterRevoke =
             await SearchGrantedRolesAsync();
+        Fixture.SearchResponse = entityRolesAfterRevoke;
 
         // Assert
-        if (Fixture.ExpectedPermissionsAfterRevoke > 0)
-        {
-            Assert.True(entityRolesPaged.Roles.Count == Fixture.ExpectedPermissionsAfterRevoke);
-        }
-        else
-        {
-            Assert.Empty(entityRolesPaged.Roles);
-        }
+        Assert.NotNull(Fixture.SearchResponse);
+        Assert.Empty(Fixture.SearchResponse.AuthorizationGrants);
         #endregion
     }
 
@@ -105,10 +108,12 @@ public class AuthorizationPermissionsE2ETests : TestBase
     /// Wyszukuje uprawnienia.
     /// </summary>
     /// <returns>Stronicowana lista nadanych uprawnień.</returns>
-    private async Task<PagedRolesResponse<EntityRole>> SearchGrantedRolesAsync()
+    private async Task<PagedAuthorizationsResponse<AuthorizationGrant>> SearchGrantedRolesAsync()
     {
-        PagedRolesResponse<EntityRole> entityRolesPaged = await KsefClient
-            .SearchEntityInvoiceRolesAsync(
+        EntityAuthorizationsQueryRequest request = new EntityAuthorizationsQueryRequest();
+        PagedAuthorizationsResponse<AuthorizationGrant> entityRolesPaged = await KsefClient
+            .SearchEntityAuthorizationGrantsAsync(
+                request,
                 accessToken,
                 pageOffset: 0,
                 pageSize: 10,
@@ -123,126 +128,21 @@ public class AuthorizationPermissionsE2ETests : TestBase
     /// </summary>
     private async Task RevokePermissionsAsync()
     {
+        List<OperationResponse> revokeResponses = new List<Client.Core.Models.Permissions.OperationResponse>();
 
-        foreach (var permission in Fixture.SearchResponse.Roles)
+        // Uruchomienie operacji cofania
+        foreach (Client.Core.Models.Permissions.AuthorizationGrant permission in Fixture.SearchResponse.AuthorizationGrants)
         {
-            var resp = await KsefClient
-            .RevokeAuthorizationsPermissionAsync(permission.Role, accessToken, CancellationToken);
-
-            Assert.NotNull(resp);
-            Assert.False(string.IsNullOrEmpty(resp.OperationReferenceNumber));
-            Fixture.RevokeResponse.Add(resp);
+            Client.Core.Models.Permissions.OperationResponse resp = await KsefClient.RevokeAuthorizationsPermissionAsync(permission.Id, accessToken, CancellationToken.None);
+            revokeResponses.Add(resp);
         }
 
-        foreach (var revokeStatus in Fixture.RevokeResponse)
+        // Sprawdzenie statusów wszystkich operacji
+        foreach (Client.Core.Models.Permissions.OperationResponse revokeResponse in revokeResponses)
         {
             await Task.Delay(SleepTime);
-            var status = await KsefClient.OperationsStatusAsync(revokeStatus.OperationReferenceNumber, accessToken);
-            if (status.Status.Code == 400 && status.Status.Description == "Operacja zakończona niepowodzeniem" && status.Status.Details.First() == "Permission cannot be revoked.")
-            {
-                Fixture.ExpectedPermissionsAfterRevoke += 1;
-            }
+            Client.Core.Models.Permissions.PermissionsOperationStatusResponse status = await KsefClient.OperationsStatusAsync(revokeResponse.OperationReferenceNumber, accessToken);
+            Fixture.RevokeStatusResults.Add(status);
         }
-    }
-
-    
-    /// <summary>
-    /// Pobiera uprawnienia do autoryzacji w systemie KSeF.
-    /// </summary>
-    /// <returns>Stronicowana lista nadanych uprawnień do autoryzacji w systemie KSeF.</returns>
-    private async Task<PagedAuthorizationsResponse<AuthorizationGrant>> GetEntityAuthorizationRoleAsync()
-    {
-        EntityAuthorizationsQueryRequest entityAuthorizationsQueryRequest =
-            new EntityAuthorizationsQueryRequest()
-            {
-                QueryType = QueryType.Received,
-            };
-
-        PagedAuthorizationsResponse<AuthorizationGrant> authorizationGrantsPaged = await KsefClient
-            .SearchEntityAuthorizationGrantsAsync(
-                entityAuthorizationsQueryRequest,
-                accessToken,
-                pageOffset: 0,
-                pageSize: 10,
-                CancellationToken);
-
-        return authorizationGrantsPaged;
-    }
-
-    /// <summary>
-    /// Pobiera uprawnienia nadane subjednostkom.
-    /// </summary>
-    /// <returns>Stronicowana lista uprawnień nadanych subjednostkom.</returns>
-    private async Task<PagedPermissionsResponse<Client.Core.Models.Permissions.SubunitPermission>> GetSubunitPermissionsAsync()
-    {
-        Client.Core.Models.Permissions.SubUnit.SubunitPermissionsQueryRequest request
-            = new Client.Core.Models.Permissions.SubUnit.SubunitPermissionsQueryRequest();
-
-        PagedPermissionsResponse<Client.Core.Models.Permissions.SubunitPermission> subunitPermissionsPaged = await KsefClient
-            .SearchSubunitAdminPermissionsAsync(
-                request,
-                accessToken,
-                pageOffset: 0,
-                pageSize: 10,
-                CancellationToken);
-
-        return subunitPermissionsPaged;
-    }
-
-    /// <summary>
-    /// Pobiera uprawnienia nadane osobom fizycznym.
-    /// </summary>
-    /// <returns>Stronicowana lista uprawnień nadanych osobom fizycznym.</returns>
-    private async Task<PagedPermissionsResponse<KSeF.Client.Core.Models.Permissions.PersonPermission>> GetPersonPermissionsAsync()
-    {
-        Client.Core.Models.Permissions.Person.PersonPermissionsQueryRequest request =
-            new Client.Core.Models.Permissions.Person.PersonPermissionsQueryRequest();
-
-        PagedPermissionsResponse<KSeF.Client.Core.Models.Permissions.PersonPermission> personPermissionsPaged = await KsefClient
-            .SearchGrantedPersonPermissionsAsync(
-                request,
-                accessToken,
-                pageOffset: 0,
-                pageSize: 10,
-                CancellationToken);
-
-        return personPermissionsPaged;
-    }
-
-    /// <summary>
-    /// Pobiera uprawnienia nadane jednostkom podległym.
-    /// </summary>
-    /// <returns>Stronicowana lista uprawnień nadanych jednostkom podległym.</returns>
-    private async Task<PagedRolesResponse<SubordinateEntityRole>> GetSubordinateEntityPermissions()
-    {
-        Client.Core.Models.Permissions.SubUnit.SubordinateEntityRolesQueryRequest request =
-            new Client.Core.Models.Permissions.SubUnit.SubordinateEntityRolesQueryRequest();
-        PagedRolesResponse<SubordinateEntityRole> subordinateEntityRolesPaged = await KsefClient
-            .SearchSubordinateEntityInvoiceRolesAsync(
-                request,
-                accessToken,
-                pageOffset: 0,
-                pageSize: 10,
-                CancellationToken);
-
-        return subordinateEntityRolesPaged;
-    }
-
-    /// <summary>
-    /// Pobiera uprawnienia nadane jednostkom EU.
-    /// </summary>
-    /// <returns>Stronicowana lista uprawnień nadanych jednostkom UE.</returns>
-    private async Task<PagedPermissionsResponse<Client.Core.Models.Permissions.EuEntityPermission>> GetEuEntityPermissionsAsync()
-    {
-        PagedPermissionsResponse<Client.Core.Models.Permissions.EuEntityPermission> euEntityPermissionsPaged =
-            await KsefClient
-                .SearchGrantedEuEntityPermissionsAsync(
-                    new(),
-                    accessToken,
-                    pageOffset: 0,
-                    pageSize: 10,
-                    CancellationToken);
-
-        return euEntityPermissionsPaged;
     }
 }

@@ -18,8 +18,6 @@ using KSeF.Client.Core.Models;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
-using KSeFClient.Core.Models;
-using KSeFClient.Core.Models.Sessions;
 
 
 
@@ -650,7 +648,7 @@ public partial class KSeFClient : IKSeFClient
 
         Pagination(pageOffset, pageSize, urlBuilder);
 
-        return await restClient.SendAsync<PagedAuthorizationsResponse<AuthorizationGrant>, KSeF.Client.Core.Models.Permissions.Entity.EntityAuthorizationsQueryRequest>(
+        return await restClient.SendAsync<PagedAuthorizationsResponse<AuthorizationGrant>, EntityAuthorizationsQueryRequest>(
             HttpMethod.Post,
             urlBuilder.ToString(),
             requestPayload,

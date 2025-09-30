@@ -4,6 +4,7 @@ public class PersonPermissionsQueryRequest
 {
     public PersonPermissionsAuthorIdentifier AuthorIdentifier { get; set; }
     public PersonPermissionsAuthorizedIdentifier AuthorizedIdentifier { get; set; }
+    public ContextIdentifier ContextIdentifier { get; set; }
     public PersonPermissionsTargetIdentifier TargetIdentifier { get; set; }
     public List<PersonPermissionType> PermissionTypes { get; set; }
     public PermissionState PermissionState { get; set; }

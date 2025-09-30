@@ -24,6 +24,18 @@ public partial class SubjectIdentifier
     public string Value { get; set; }
 }
 
+public partial class AuthorizedIdentifier
+{
+    public AuthorizedIdentifierType Type { get; set; }
+    public string Value { get; set; }
+}
+
+public partial class TargetIdentifier
+{
+    public TargetIdentifierType Type { get; set; }
+    public string Value { get; set; }
+}
+
 public enum SubjectIdentifierType
 {
     Nip,

@@ -5,12 +5,9 @@ namespace KSeF.Client.Core.Models.Permissions
     public class PersonalPermission
     {
         public string Id { get; set; }
-        public string ContextIdentifier { get; set; }
-        public TargetIdentifierType ContextIdentifierType { get; set; }
-        public string AuthorizedIdentifier { get; set; }
-        public AuthorizedIdentifierType AuthorizedIdentifierType { get; set; }
-        public string TargetIdentifier { get; set; }
-        public TargetIdentifierType TargetIdentifierType { get; set; }
+        public ContextIdentifier ContextIdentifier { get; set; }
+        public AuthorizedIdentifier AuthorizedIdentifier { get; set; }
+        public TargetIdentifier TargetIdentifier { get; set; }
         public PersonPermissionType PermissionScope { get; set; }
         public string Description { get; set; }
         public PermissionState PermissionState { get; set; }

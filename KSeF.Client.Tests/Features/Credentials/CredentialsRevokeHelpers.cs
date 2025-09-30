@@ -38,7 +38,7 @@ public partial class CredentialsRevokeTests
         public static async Task<bool> GrantCredentialsManageToDelegateAsync(
             IKSeFClient client, string ownerToken, string delegateNip)
         {
-            var subjectIdentifier = new SubjectIdentifier { Type = SubjectIdentifierType.Nip, Value = delegateNip };
+            var subjectIdentifier = new Client.Core.Models.Permissions.Person.SubjectIdentifier { Type = SubjectIdentifierType.Nip, Value = delegateNip };
             var permissions = new[] { StandardPermissionType.CredentialsManage };
 
             var operationResponse = await PermissionsUtils.GrantPersonPermissionsAsync(client, ownerToken, subjectIdentifier, permissions);

@@ -1,5 +1,3 @@
-using KSeFClient.Core.Models;
-
 namespace KSeF.Client.Core.Models.Sessions;
 
 public class SessionInvoice

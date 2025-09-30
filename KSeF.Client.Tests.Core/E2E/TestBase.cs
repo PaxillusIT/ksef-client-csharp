@@ -1,4 +1,4 @@
-using KSeF.Client.Api.Services;
+﻿using KSeF.Client.Api.Services;
 using KSeF.Client.Core.Interfaces;
 using KSeF.Client.Tests.Core.Config;
 using KSeF.Client.DI;
@@ -10,14 +10,15 @@ public abstract class TestBase : IDisposable
 {
     internal const int SleepTime = 2000;
 
+    private IServiceScope _scope = default!;
+    private ServiceProvider _serviceProvider = default!;
+
     protected static readonly CancellationToken CancellationToken = CancellationToken.None;
     protected IKSeFClient KsefClient => _scope.ServiceProvider.GetRequiredService<IKSeFClient>();
-    protected SignatureService SignatureService => _scope.ServiceProvider.GetRequiredService<SignatureService>();
-    protected PersonTokenService TokenService => _scope.ServiceProvider.GetRequiredService<PersonTokenService>();
-    protected ICryptographyService CryptographyService => _scope.ServiceProvider.GetRequiredService<CryptographyService>();
+    protected ISignatureService SignatureService => _scope.ServiceProvider.GetRequiredService<ISignatureService>();
+    protected IPersonTokenService TokenService => _scope.ServiceProvider.GetRequiredService<IPersonTokenService>();
+    protected ICryptographyService CryptographyService => _scope.ServiceProvider.GetRequiredService<ICryptographyService>();
 
-    private ServiceProvider _provider = default!;
-    private IServiceScope _scope = default!;
     
     public TestBase()
     {
@@ -35,31 +36,20 @@ public abstract class TestBase : IDisposable
         {
             options.BaseUrl = apiSettings.BaseUrl!;
             options.CustomHeaders = apiSettings.CustomHeaders ?? new Dictionary<string, string>();
+            options.WarmupOnStart = WarmupMode.Disabled;
         });
 
-        services.AddSingleton<SignatureService>();
-        services.AddSingleton<PersonTokenService>();
-        services.AddSingleton<CryptographyService>(sp => 
-        {
-            return new CryptographyService(async ct =>
-            {
-                using var scope = sp.CreateScope();
-                var ksefCLient = scope.ServiceProvider.GetRequiredService<IKSeFClient>();
-                return await ksefCLient.GetPublicCertificatesAsync(ct);
-            });
-        });
-        services.AddHostedService<CryptographyWarmupHostedService>();
-
-        _provider = services.BuildServiceProvider(new ServiceProviderOptions
+        _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
         {
             ValidateOnBuild = true,
             ValidateScopes = true
         });
 
-        // wymagane do pobrania certyfikatów przed uruchomieniem testów
-        _provider.GetRequiredService<CryptographyService>().WarmupAsync(CancellationToken.None);
+        _scope = _serviceProvider.CreateScope();
 
-        _scope = _provider.CreateScope();
+        // opcjonalne: inicjalizacja lub inne czynności startowe
+        _scope.ServiceProvider.GetRequiredService<ICryptographyService>()
+                           .WarmupAsync(CancellationToken.None).GetAwaiter().GetResult();
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
@@ -67,6 +57,6 @@ public abstract class TestBase : IDisposable
     public void Dispose()
     {
         _scope.Dispose();
-        _provider.Dispose();
+        _serviceProvider?.Dispose();
     }
 }

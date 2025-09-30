@@ -14,10 +14,7 @@ namespace KSeF.Client.Tests.Core.E2E.Permissions.IndirectPermission;
 [Collection("IndirectPermissionScenario")]
 public class IndirectPermissionE2ETests : TestBase
 {
-    private const string OperationFailureDescription = "Operacja zakończona niepowodzeniem";
-    private const string PermissionRevokeFailureDetail = "Permission cannot be revoked.";
-    private const int OperationSuccessStatusCode = 200;
-    private const int OperationFailureStatusCode = 400;
+    private const int OperationSuccessfulStatusCode = 200;
 
     private string ownerAccessToken { get; set; }
     private string ownerNip { get; set; }
@@ -58,7 +55,7 @@ public class IndirectPermissionE2ETests : TestBase
 
         // Assert
         Assert.NotNull(personGrantStatus);
-        Assert.Equal(OperationSuccessStatusCode, personGrantStatus.Status.Code);
+        Assert.Equal(OperationSuccessfulStatusCode, personGrantStatus.Status.Code);
 
         // Arrange: Uwierzytelnienie pośrednika (Arrange)
         delegateAccessToken = (await AuthenticationUtils.AuthenticateAsync(KsefClient, SignatureService, delegateNip)).AccessToken.Token;
@@ -68,7 +65,7 @@ public class IndirectPermissionE2ETests : TestBase
 
         // Assert
         Assert.NotNull(indirectGrantStatus);
-        Assert.Equal(OperationSuccessStatusCode, indirectGrantStatus.Status.Code);
+        Assert.Equal(OperationSuccessfulStatusCode, indirectGrantStatus.Status.Code);
 
         // Act: 3) Wyszukanie nadanych uprawnień (w bieżącym kontekście, nieaktywne)
         PagedPermissionsResponse<Client.Core.Models.Permissions.PersonPermission> permissionsAfterGrant = await SearchGrantedPersonPermissionsInCurrentContextAsync(
@@ -84,13 +81,16 @@ public class IndirectPermissionE2ETests : TestBase
         await Task.Delay(SleepTime);
 
         // Act: 4) Cofnięcie nadanych uprawnień
-        List<OperationResponse> revokeResponses = await RevokePermissionsAsync(permissionsAfterGrant.Permissions, delegateAccessToken);
-
+        List<PermissionsOperationStatusResponse> revokeResult = await RevokePermissionsAsync(permissionsAfterGrant.Permissions, delegateAccessToken);
+        
         // Assert
-        Assert.NotNull(revokeResponses);
-        Assert.Equal(permissionsAfterGrant.Permissions.Count, revokeResponses.Count);
-
-        int expectedRemainingCount = await CountPermissionsRemainingAfterRevokeAsync(revokeResponses, delegateAccessToken);
+        Assert.NotNull(revokeResult);
+        Assert.NotEmpty(revokeResult);
+        Assert.Equal(permissionsAfterGrant.Permissions.Count, revokeResult.Count);
+        Assert.All(revokeResult, r =>
+            Assert.True(r.Status.Code == OperationSuccessfulStatusCode,
+                $"Operacja cofnięcia uprawnień nie powiodła się: {r.Status.Description}, szczegóły: [{string.Join(",", r.Status.Details ?? Array.Empty<string>())}]")
+        );
 
         await Task.Delay(SleepTime);
 
@@ -103,14 +103,7 @@ public class IndirectPermissionE2ETests : TestBase
 
         // Assert
         Assert.NotNull(permissionsAfterRevoke);
-        if (expectedRemainingCount > 0)
-        {
-            Assert.Equal(expectedRemainingCount, permissionsAfterRevoke.Permissions.Count);
-        }
-        else
-        {
-            Assert.Empty(permissionsAfterRevoke.Permissions);
-        }
+        Assert.Empty(permissionsAfterRevoke.Permissions);
     }
 
     /// <summary>
@@ -156,7 +149,7 @@ public class IndirectPermissionE2ETests : TestBase
             .Create()
             .WithSubject(Subject)
             .WithContext(
-                new TargetIdentifier
+                new Client.Core.Models.Permissions.IndirectEntity.TargetIdentifier
                 {
                     Type = Client.Core.Models.Permissions.IndirectEntity.TargetIdentifierType.Nip,
                     Value = ownerNip
@@ -213,20 +206,32 @@ public class IndirectPermissionE2ETests : TestBase
     }
 
     /// <summary>
-    /// Cofnia przekazane uprawnienia
+    /// Cofnięcie wszystkich przekazanych uprawnień i zwrócenie statusów operacji.
     /// </summary>
-    /// <returns>Zwraca listę odpowiedzi operacji cofnięcia, każda z numerem referencyjnym operacji.</returns>
-    private async Task<List<OperationResponse>> RevokePermissionsAsync(
+    private async Task<List<PermissionsOperationStatusResponse>> RevokePermissionsAsync(
         IEnumerable<Client.Core.Models.Permissions.PersonPermission> permissions,
         string accessToken)
     {
-        List<OperationResponse> responses = new List<OperationResponse>();
+        List<KSeF.Client.Core.Models.Permissions.OperationResponse> revokeResponses = new List<KSeF.Client.Core.Models.Permissions.OperationResponse>();
+
+        // Uruchomienie operacji cofania
         foreach (Client.Core.Models.Permissions.PersonPermission permission in permissions)
         {
-            OperationResponse revokeOperationResponse = await KsefClient.RevokeCommonPermissionAsync(permission.Id, accessToken, CancellationToken);
-            responses.Add(revokeOperationResponse);
+            Client.Core.Models.Permissions.OperationResponse response = await KsefClient.RevokeCommonPermissionAsync(permission.Id, accessToken, CancellationToken.None);
+            revokeResponses.Add(response);
         }
-        return responses;
+
+        // Sprawdzenie statusów wszystkich operacji
+        List<Client.Core.Models.Permissions.PermissionsOperationStatusResponse> revokeStatusResults = new List<Client.Core.Models.Permissions.PermissionsOperationStatusResponse>();
+
+        foreach (Client.Core.Models.Permissions.OperationResponse revokeResponse in revokeResponses)
+        {
+            await Task.Delay(SleepTime);
+            Client.Core.Models.Permissions.PermissionsOperationStatusResponse status = await KsefClient.OperationsStatusAsync(revokeResponse.OperationReferenceNumber, accessToken);
+            revokeStatusResults.Add(status);
+        }
+
+        return revokeStatusResults;
     }
 
     /// <summary>
@@ -238,31 +243,5 @@ public class IndirectPermissionE2ETests : TestBase
     {
         PermissionsOperationStatusResponse permissionsOperationStatusResponse = await KsefClient.OperationsStatusAsync(operationReferenceNumber, accessToken);
         return permissionsOperationStatusResponse;
-    }
-
-    /// <summary>
-    /// Sprawdza statusy operacji cofnięcia uprawnień i zlicza te, których nie udało się cofnąć
-    /// (pozostaną widoczne po ponownym wyszukaniu).
-    /// </summary>
-    private async Task<int> CountPermissionsRemainingAfterRevokeAsync(
-        IEnumerable<OperationResponse> revokeResponses,
-        string accessToken)
-    {
-        int expectedPermissionsAfterRevoke = 0;
-
-        foreach (OperationResponse revoke in revokeResponses)
-        {
-            await Task.Delay(SleepTime);
-
-            PermissionsOperationStatusResponse status = await KsefClient.OperationsStatusAsync(revoke.OperationReferenceNumber, accessToken);
-            if (status.Status.Code == OperationFailureStatusCode
-                && status.Status.Description == OperationFailureDescription
-                && status.Status.Details.First() == PermissionRevokeFailureDetail)
-            {
-                expectedPermissionsAfterRevoke += 1;
-            }
-        }
-
-        return expectedPermissionsAfterRevoke;
     }
 }

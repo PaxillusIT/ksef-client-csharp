@@ -6,9 +6,4 @@ public class ExportInvoicesResponse
     /// Numer referencyjny operacji eksportu, potrzebny do sprawdzenia statusu.
     /// </summary>
     public string OperationReferenceNumber { get; set; }
-
-    /// <summary>
-    /// Status inicjacji operacji (np. ACCEPTED).
-    /// </summary>
-    public string Status { get; set; }
 }

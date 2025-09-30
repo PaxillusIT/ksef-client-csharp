@@ -13,7 +13,6 @@ public class AuthorizationPermissionsScenarioE2EFixture
         };
 
     public OperationResponse GrantResponse { get; set; }
-    public List<OperationResponse> RevokeResponse { get; set; } = new();
-    public PagedRolesResponse<EntityRole> SearchResponse { get; set; }
-    public int ExpectedPermissionsAfterRevoke { get; internal set; }
+    public List<PermissionsOperationStatusResponse> RevokeStatusResults { get; set; } = new();
+    public PagedAuthorizationsResponse<AuthorizationGrant> SearchResponse { get; set; }
 }

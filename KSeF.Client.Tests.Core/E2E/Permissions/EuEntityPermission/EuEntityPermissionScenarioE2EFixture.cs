@@ -7,14 +7,13 @@ namespace KSeF.Client.Tests.Core.E2E.Permissions.EuEntityPermission;
 public class EuEntityPermissionScenarioE2EFixture
 {
     public string AccessToken { get; set; }
-    public SubjectIdentifier EuEntity { get; } = new SubjectIdentifier
+    public Client.Core.Models.Permissions.EUEntity.SubjectIdentifier EuEntity { get; } = new Client.Core.Models.Permissions.EUEntity.SubjectIdentifier
     {
         Type = SubjectIdentifierType.Fingerprint,
         Value = MiscellaneousUtils.GetRandomNip()
     };
     public OperationResponse GrantResponse { get; set; }
-    public List<OperationResponse> RevokeResponse { get; set; } = new List<OperationResponse>();
+    public List<PermissionsOperationStatusResponse> RevokeStatusResults { get; set; } = new List<PermissionsOperationStatusResponse>();
     public PagedPermissionsResponse<Client.Core.Models.Permissions.EuEntityPermission> SearchResponse { get; set; }
-    public int ExpectedPermissionsAfterRevoke { get; internal set; }
     public string NipVatUe { get; set; }
 }

@@ -1,3 +1,4 @@
+using KSeF.Client.Core.Exceptions;
 using KSeF.Client.Core.Models.Invoices;
 using KSeF.Client.Tests.Utils;
 
@@ -10,6 +11,7 @@ public class InteractiveSessionTests : KsefIntegrationTestBase
 {
     private const string OwnerContextNip = "6351111111";
     private const string SecondContextNip = "6451111144";
+    private const string operationForbidden = "HTTP 403: Forbidden";
 
 
     [Theory]
@@ -108,10 +110,11 @@ public class InteractiveSessionTests : KsefIntegrationTestBase
         Assert.NotNull(secondSessionStatusResponse.Status);
         Assert.True(secondSessionStatusResponse.Status.Code == 100);
 
-        var callFromSecondContextResponse = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var callFromSecondContextResponse = await Assert.ThrowsAsync<KsefApiException>(() =>
                     KsefClient.GetSessionStatusAsync(openOnlineSessionResponse.ReferenceNumber, authResult.AccessToken.Token));
 
         Assert.NotNull(callFromSecondContextResponse);
+        Assert.Equal(operationForbidden, callFromSecondContextResponse?.Message);
     }
 
     [Theory]

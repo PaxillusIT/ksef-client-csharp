@@ -71,7 +71,7 @@ public static class PermissionsUtils
     public static async Task<OperationResponse> GrantPersonPermissionsAsync(
         IKSeFClient client,
         string accessToken,
-        SubjectIdentifier subject,
+        Core.Models.Permissions.Person.SubjectIdentifier subject,
         StandardPermissionType[] permissions,
         string? description = null)
     {

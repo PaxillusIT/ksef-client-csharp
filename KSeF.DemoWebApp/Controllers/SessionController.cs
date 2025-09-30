@@ -1,7 +1,6 @@
 using KSeF.Client.Core.Models.Sessions;
 using KSeF.Client;
 using Microsoft.AspNetCore.Mvc;
-using KSeFClient.Core.Models.Sessions;
 
 
 namespace WebApplication.Controllers;

@@ -1,10 +1,39 @@
 > Info: 🔧 zmienione • ➕ dodane • ➖ usunięte • 🔀 przeniesione
 
 ---
-# Changelog zmian – ### Wersja 2.0.0 RC5
+# Changelog zmian – ## Wersja 2.0.0 RC5.1
 ---
 
-## Wersja 2.0.0 RC5
+### Nowe
+- **Tests**
+  - Obsługa `KsefApiException` (np. 403 *Forbidden*) w scenariuszach sesji i E2E.
+
+### Zmodyfikowane
+- **Invoices / Export**
+  - `ExportInvoicesResponse` – usunięto pole `Status`; po `ExportInvoicesAsync` używaj `GetInvoiceExportStatusAsync(operationReferenceNumber)`.
+- **Invoices / Metadata**
+  - `pageSize` – zakres dozwolony **10–250** (zaktualizowane testy: „outside 10–250”).
+- **Tests (E2E)**
+  - Pobieranie faktury: retry **5 → 10**, precyzyjny `catch` dla `KsefApiException`, asercje `IsNullOrWhiteSpace`.
+- **Utils**
+  - `OnlineSessionUtils` – prefiks **`PL`** dla `supplierNip` i `customerNip`.
+- **Peppol tests**
+  - Zmieniono użycie NIP na format z prefiksem `PL...`.
+  - Dodano asercję w testach PEF, jeśli faktura pozostaje w statusie *processing*.
+- **Permissions**
+  - Dostosowanie modeli i testów do nowego kontraktu API.
+### Usunięte
+- **Invoices / Export**
+  - `ExportInvoicesResponse.Status`.
+
+### Poprawki i zmiany dokumentacji
+- Przykłady eksportu bez `Status`.
+- Opis wyjątków (`KsefApiException`, 403 *Forbidden*).
+- Limit `pageSize` zaktualizowany do **10–250**.
+
+---
+# Changelog zmian – ### Wersja 2.0.0 RC5
+---
 
 ### Nowe
 - **Auth**

@@ -4,7 +4,6 @@ using KSeF.Client.Core.Models.Sessions;
 using KSeF.Client.Core.Models.Sessions.BatchSession;
 using System.IO.Compression;
 using System.Text;
-using KSeFClient.Core.Models.Sessions;
 
 namespace KSeF.Client.Tests.Utils;
 

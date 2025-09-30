@@ -44,18 +44,18 @@
 				<cbc:CityName>Warszawa</cbc:CityName>
 				<cbc:PostalZone>00-001</cbc:PostalZone>
 				<cac:Country>
-					<cbc:IdentificationCode>GB</cbc:IdentificationCode>
+					<cbc:IdentificationCode>PL</cbc:IdentificationCode>
 				</cac:Country>
 			</cac:PostalAddress>
 			<cac:PartyTaxScheme>
-				<cbc:CompanyID>GB1232434</cbc:CompanyID>
+				<cbc:CompanyID>#supplier_nip#</cbc:CompanyID>
 				<cac:TaxScheme>
 					<cbc:ID>VAT</cbc:ID>
 				</cac:TaxScheme>
 			</cac:PartyTaxScheme>
 			<cac:PartyLegalEntity>
 				<cbc:RegistrationName>Sprzedawca Sp. z o.o.</cbc:RegistrationName>
-				<cbc:CompanyID>#nip#</cbc:CompanyID>
+				<cbc:CompanyID>#supplier_nip#</cbc:CompanyID>
 				<cbc:CompanyLegalForm>AdditionalLegalInformation</cbc:CompanyLegalForm>
 			</cac:PartyLegalEntity>
 		</cac:Party>

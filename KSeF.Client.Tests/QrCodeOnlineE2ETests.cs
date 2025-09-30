@@ -4,7 +4,6 @@ using KSeF.Client.Core.Models.Sessions;
 using KSeF.Client.Core.Models.Sessions.OnlineSession;
 using KSeF.Client.DI;
 using KSeF.Client.Tests.Utils;
-using KSeFClient.Core.Models.Sessions;
 using System.Buffers.Text;
 
 namespace KSeF.Client.Tests;

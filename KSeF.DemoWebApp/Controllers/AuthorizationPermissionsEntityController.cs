@@ -11,7 +11,7 @@ namespace KSeF.DemoWebApp.Controllers;
 public class AuthorizationPermissionsEntityController(IKSeFClient ksefClient) : ControllerBase
 {
     [HttpPost("grant-authorization-permissions-for-entity")]
-    public async Task<ActionResult<OperationResponse>> GrantPermissionsEntity(string accessToken, SubjectIdentifier subjectIdentifier, CancellationToken cancellationToken)
+    public async Task<ActionResult<OperationResponse>> GrantPermissionsEntity(string accessToken, Client.Core.Models.Permissions.AuthorizationEntity.SubjectIdentifier subjectIdentifier, CancellationToken cancellationToken)
     {
         var request = GrantAuthorizationPermissionsRequestBuilder
             .Create()

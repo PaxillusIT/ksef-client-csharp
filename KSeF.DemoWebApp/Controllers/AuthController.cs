@@ -4,7 +4,6 @@ using KSeF.Client.Api.Builders.X509Certificates;
 using KSeF.Client.Core.Interfaces;
 using KSeF.Client.Core.Models;
 using KSeF.Client.Core.Models.Authorization;
-using KSeFClient.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -96,7 +95,7 @@ public class AuthController : ControllerBase
 
         var unsignedXml = AuthTokenRequestSerializer.SerializeToXmlString(authorizeRequest);
 
-        var signedXml = await signatureService.SignAsync(unsignedXml, x509.CopyWithPrivateKey(rsa));
+        var signedXml = signatureService.Sign(unsignedXml, x509.CopyWithPrivateKey(rsa));
 
         var authSubmission = await _ksefClient
            .SubmitXadesAuthRequestAsync(signedXml, false, cancellationToken);
@@ -156,7 +155,7 @@ public class AuthController : ControllerBase
                 .WithCommonName(certificateRequestModel.CommonName)
                 .Build();
 
-        string signedXml = await _signatureService.SignAsync(unsignedXml, certificate);
+        string signedXml = _signatureService.Sign(unsignedXml, certificate);
         SignatureResponse signatureResponse = await _ksefClient.SubmitXadesAuthRequestAsync(signedXml, false, CancellationToken.None);
 
         AuthStatus authStatus;

@@ -7,8 +7,7 @@ public class CertificateInfo
     public CertificateType CertificateType { get; set; }
     public string CommonName { get; set; }
     public string Status { get; set; }
-    public string SubjectIdentifier { get; set; }
-    public string SubjectIdentifierType { get; set; }
+    public SubjectIdentifier SubjectIdentifier { get; set; }
     public DateTimeOffset ValidFrom { get; set; }
     public DateTimeOffset ValidTo { get; set; }
     public DateTimeOffset LastUseDate { get; set; }

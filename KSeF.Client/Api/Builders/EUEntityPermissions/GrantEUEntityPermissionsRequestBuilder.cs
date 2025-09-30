@@ -86,7 +86,7 @@ public static class GrantEUEntityPermissionsRequestBuilder
                 SubjectIdentifier = _subject,
                 ContextIdentifier = _context,
                 Description = _description,
-                SubjectName = _subjectName
+                EuEntityName = _subjectName
             };
         }
     }

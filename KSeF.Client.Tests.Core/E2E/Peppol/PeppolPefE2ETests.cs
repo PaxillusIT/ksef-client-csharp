@@ -1,4 +1,4 @@
-﻿using KSeF.Client.Core.Models.Authorization;
+using KSeF.Client.Core.Models.Authorization;
 using KSeF.Client.Core.Models.Invoices;
 using KSeF.Client.Core.Models.Peppol;
 using KSeF.Client.Core.Models.Permissions;
@@ -6,6 +6,7 @@ using KSeF.Client.Core.Models.Permissions.Entity;
 using KSeF.Client.Core.Models.Sessions;
 using KSeF.Client.Core.Models.Sessions.OnlineSession;
 using KSeF.Client.Tests.Utils;
+using System.Diagnostics;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 
@@ -70,7 +71,7 @@ namespace KSeF.Client.Tests.Core.E2E.Peppol
                 ksefClient: KsefClient,
                 signatureService: SignatureService,
                 certificate: providerSeal,
-                contextIdentifierType: ContextIdentifierType.PeppolId,
+                contextIdentifierType: Client.Core.Models.Authorization.ContextIdentifierType.PeppolId,
                 contextIdentifierValue: peppolId);
             Assert.NotNull(providerAuth?.AccessToken);
             string providerToken = providerAuth.AccessToken.Token;
@@ -192,9 +193,9 @@ namespace KSeF.Client.Tests.Core.E2E.Peppol
                 ksefClient: KsefClient,
                 sessionReferenceNumber: openSession.ReferenceNumber,
                 accessToken: providerToken,   // DOSTAWCA wysyła
-                nip: _companyNip,             // w imieniu firmy, która nadała grant
-                buyerNip: _buyerNip,
-                buyerReference: _buyerNip,
+                supplierNip: $"PL{_companyNip}",             // w imieniu firmy, która nadała grant
+                customerNip: $"PL{_buyerNip}",
+                buyerReference: $"PL{_buyerNip}",
                 iban: _iban,
                 templatePath: PefTemplate,
                 encryptionData: encryptionData,
@@ -236,6 +237,9 @@ namespace KSeF.Client.Tests.Core.E2E.Peppol
             SessionInvoice refreshedSessionInvoice = invoices.Invoices.First(x => x.ReferenceNumber == sendResp.ReferenceNumber);
             if (refreshedSessionInvoice.Status.Code == processing)
             {
+                Assert.True(refreshedSessionInvoice.Status.Code == processing,
+                    $"Faktura nadal w statusie {processing} – nie zdążyła się przetworzyć w czasie testu.");
+
                 return; // dalej nie pójdziemy, bo faktura nadal w processing
             }
 

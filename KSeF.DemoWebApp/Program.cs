@@ -1,11 +1,10 @@
+using KSeF.Client;
 using KSeF.Client.DI;
 using Microsoft.AspNetCore.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 var builder = Microsoft.AspNetCore.Builder.WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 
 builder.Services.AddKSeFClient(options =>
 {
@@ -19,6 +18,13 @@ builder.Services.AddKSeFClient(options =>
                 .GetSection("ApiSettings:customHeaders")
                 .Get<Dictionary<string, string>>()
               ?? new Dictionary<string, string>();
+
+    options.WarmupOnStart = WarmupMode.NonBlocking;
+},
+async (serviceProvider, cancellationToken) =>
+{
+    var client = serviceProvider.GetRequiredService<IKSeFClient>();
+    return await client.GetPublicCertificatesAsync(cancellationToken);
 });
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);

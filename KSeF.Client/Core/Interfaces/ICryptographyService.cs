@@ -17,16 +17,16 @@ public interface ICryptographyService
     EncryptionData GetEncryptionData();
 
     /// <summary>
-    /// Szyfrowanie danych przy użyciu AES-256 w trybie CBC z PKCS7 paddingiem.
+    /// Szyfrowanie danych przy użyciu AES-256 w trybie CBC z PKCS7.
     /// </summary>
     /// <param name="content">Plik w formie byte array.</param>
     /// <param name="key">Klucz symetryczny.</param>
-    /// <param name="iv">Wektro IV klucza symetrycznego.</param>
+    /// <param name="iv">Wektor IV klucza symetrycznego.</param>
     /// <returns>Zaszyfrowany plik w formie byte array.</returns>
     byte[] EncryptBytesWithAES256(byte[] content, byte[] key, byte[] iv);
 
     /// <summary>
-    /// Szyfrowanie danych przy użyciu AES-256 w trybie CBC z PKCS7 paddingiem.
+    /// Szyfrowanie danych przy użyciu AES-256 w trybie CBC z PKCS7.
     /// </summary>
     /// <param name="input">Input stream - niezaszyfrowany.</param>
     /// <param name="output">Output stream - zaszyfrowany.</param>
@@ -34,6 +34,17 @@ public interface ICryptographyService
     /// <param name="iv">Wektro IV klucza symetrycznego.</param>
     /// <returns>Zaszyfrowany plik w formie stream.</returns>
     void EncryptStreamWithAES256(Stream input, Stream output, byte[] key, byte[] iv);
+
+    /// <summary>
+    /// Asynchroniczne szyfrowanie danych przy użyciu AES-256 w trybie CBC z PKCS7.
+    /// </summary>
+    /// <param name="input">Input stream - niezaszyfrowany.</param>
+    /// <param name="output">Output stream - zaszyfrowany.</param>
+    /// <param name="key">Klucz symetryczny.</param>
+    /// <param name="iv">Wektor IV klucza symetrycznego.</param>
+    /// <param name="ct">Token anulowania.</param>
+    Task EncryptStreamWithAES256Async(Stream input, Stream output, byte[] key, byte[] iv, CancellationToken ct = default);
+
     /// <summary>
     /// Generuje żądanie podpisania certyfikatu (CSR) z użyciem RSA na podstawie przekazanych informacji o certyfikacie.
     /// </summary>
@@ -55,6 +66,7 @@ public interface ICryptographyService
     /// <param name="file">Plik w formie byte array</param>
     /// <returns><see cref="FileMetadata"/></returns>
     FileMetadata GetMetaData(byte[] file);
+
     /// <summary>
     /// Zwraca zaszyfrowany plik formie byte array przy użyciu algorytmu RSA.
     /// </summary>
@@ -84,7 +96,6 @@ public interface ICryptographyService
     /// <returns></returns>
     Task WarmupAsync(CancellationToken ct = default);
 
-
     /// <summary>
     /// Wymusza odświeżenie certyfikatów i kluczy w pamięci podręcznej.
     /// </summary>
@@ -101,5 +112,4 @@ public interface ICryptographyService
     /// Certyfikat używany do szyfrowania tokena KSeF.
     /// </summary>
     X509Certificate2 KsefTokenCertificate { get; }
-
 }

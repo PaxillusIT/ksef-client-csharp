@@ -52,6 +52,10 @@
 	  <AdditionalFiles Include="Resources/**/*.resx" />
 	</ItemGroup>
 	
+	<ItemGroup>
+	  <Folder Include="Core\Models\Invoices\Query\" />
+	</ItemGroup>
+	
 	<!-- Ensure correct JSON context files are available -->
 	<Target Name="RestoreSourceGenAssets" BeforeTargets="Compile">
 		<ItemGroup>

@@ -19,7 +19,7 @@ public class SubunitPermissionsE2ETests : TestBase
 {
     private readonly SubunitPermissionsScenarioE2EFixture _fixture;
 
-    private const int SuccessfulOperationStatusCode = 200;
+    private const int OperationSuccessfulStatusCode = 200;
     private string _unitAccessToken = string.Empty;
     private string _subunitAccessToken = string.Empty;
 
@@ -54,7 +54,7 @@ public class SubunitPermissionsE2ETests : TestBase
 
         // Assert
         Assert.NotNull(grantOperationStatus);
-        Assert.Equal(SuccessfulOperationStatusCode, grantOperationStatus.Status.Code);
+        Assert.Equal(OperationSuccessfulStatusCode, grantOperationStatus.Status.Code);
         #endregion
 
         await Task.Delay(SleepTime);
@@ -100,6 +100,15 @@ public class SubunitPermissionsE2ETests : TestBase
         #region Cofnij uprawnienia nadane administratorowi jednostki podrzędnej
         // Act
         await RevokeSubUnitPermissionsAsync();
+
+        // Assert
+        Assert.NotNull(_fixture.RevokeStatusResults);
+        Assert.NotEmpty(_fixture.RevokeStatusResults);
+        Assert.Equal(_fixture.RevokeStatusResults.Count, _fixture.SearchResponse.Permissions.Count);
+        Assert.All(_fixture.RevokeStatusResults, r =>
+            Assert.True(r.Status.Code == OperationSuccessfulStatusCode,
+                $"Operacja cofnięcia uprawnień nie powiodła się: {r.Status.Description}, szczegóły: [{string.Join(",", r.Status.Details ?? Array.Empty<string>())}]")
+        );
         #endregion
 
         await Task.Delay(SleepTime);
@@ -110,14 +119,7 @@ public class SubunitPermissionsE2ETests : TestBase
         _fixture.SearchResponse = pagedPermissionsAfterRevoke;
 
         // Assert
-        if (_fixture.ExpectedPermissionsAfterRevoke > 0)
-        {
-            Assert.Equal(_fixture.ExpectedPermissionsAfterRevoke, pagedPermissionsAfterRevoke.Permissions.Count);
-        }
-        else
-        {
-            Assert.Empty(pagedPermissionsAfterRevoke.Permissions);
-        }
+        Assert.Empty(pagedPermissionsAfterRevoke.Permissions);
         #endregion
     }
 
@@ -244,26 +246,20 @@ public class SubunitPermissionsE2ETests : TestBase
     /// <returns></returns>
     private async Task RevokeSubUnitPermissionsAsync()
     {
+        List<OperationResponse> revokeResponses = new List<Client.Core.Models.Permissions.OperationResponse>();
+        // Uruchomienie operacji cofania
         foreach (Client.Core.Models.Permissions.SubunitPermission permission in _fixture.SearchResponse.Permissions)
         {
-            OperationResponse operationResponse =
-                await KsefClient
-                .RevokeCommonPermissionAsync(
-                    permission.Id,
-                    _subunitAccessToken,
-                    CancellationToken);
-
-            _fixture.RevokeResponse.Add(operationResponse);
+            Client.Core.Models.Permissions.OperationResponse response = await KsefClient.RevokeCommonPermissionAsync(permission.Id, _subunitAccessToken, CancellationToken.None);
+            revokeResponses.Add(response);
         }
 
-        foreach (OperationResponse revokeStatus in _fixture.RevokeResponse)
+        // Sprawdzenie statusów wszystkich operacji
+        foreach (Client.Core.Models.Permissions.OperationResponse revokeResponse in revokeResponses)
         {
             await Task.Delay(SleepTime);
-            PermissionsOperationStatusResponse status = await KsefClient.OperationsStatusAsync(revokeStatus.OperationReferenceNumber, _subunitAccessToken);
-            if (status.Status.Code == 400 && status.Status.Description == "Operacja zakończona niepowodzeniem" && status.Status.Details.First() == "Permission cannot be revoked.")
-            {
-                _fixture.ExpectedPermissionsAfterRevoke += 1;
-            }
+            Client.Core.Models.Permissions.PermissionsOperationStatusResponse revokeStatus = await KsefClient.OperationsStatusAsync(revokeResponse.OperationReferenceNumber, _subunitAccessToken);
+            _fixture.RevokeStatusResults.Add(revokeStatus);
         }
     }
 }

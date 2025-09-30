@@ -2,7 +2,6 @@ using KSeF.Client.Core.Interfaces;
 using KSeF.Client.Core.Models.Invoices;
 using KSeF.Client.Core.Models.Sessions;
 using KSeF.Client.Core.Models.Sessions.OnlineSession;
-using KSeFClient.Core.Models.Sessions;
 using System.Globalization;
 using System.Text;
 
@@ -80,8 +79,8 @@ public static class OnlineSessionUtils
     /// <param name="ksefClient">Klient KSeF.</param>
     /// <param name="sessionReferenceNumber">Numer referencyjny sesji.</param>
     /// <param name="accessToken">Token dostępu.</param>
-    /// <param name="nip">NIP podmiotu (sprzedawcy) – podmienia <c>#nip#</c>.</param>
-    /// <param name="buyerNip">NIP nabywcy – wymagany, jeśli szablon zawiera <c>#buyer_nip#</c>.</param>
+    /// <param name="supplierNip">NIP podmiotu (sprzedawcy) – podmienia <c>#nip#</c>.</param>
+    /// <param name="customerNip">NIP nabywcy – wymagany, jeśli szablon zawiera <c>#buyer_nip#</c>.</param>
     /// <param name="buyerReference">Referencja nabywcy (BT-10) – wymagana, jeśli jest <c>#buyer_reference#</c>.</param>
     /// <param name="iban">IBAN rachunku odbiorcy – wymagany, jeśli jest <c>#iban#</c> (bez walidacji).</param>
     /// <param name="templatePath">Ścieżka do pliku szablonu XML.</param>
@@ -92,8 +91,8 @@ public static class OnlineSessionUtils
      IKSeFClient ksefClient,
      string sessionReferenceNumber,
      string accessToken,
-     string nip,
-     string buyerNip,
+     string supplierNip,
+     string customerNip,
      string buyerReference,
      string iban,
      string templatePath,
@@ -106,20 +105,11 @@ public static class OnlineSessionUtils
 
         string xml = File.ReadAllText(path, Encoding.UTF8);
 
-        // --- helpers (lokalne, bez walidacji formatów) ---
-        static string DigitsOnly(string v)
-        {
-            if (string.IsNullOrWhiteSpace(v)) return v;
-            var sb = new StringBuilder(v.Length);
-            foreach (var ch in v) if (char.IsDigit(ch)) sb.Append(ch);
-            return sb.ToString();
-        }
         static string NormalizeIban(string v)
             => string.IsNullOrWhiteSpace(v) ? v : new string(v.Where(ch => !char.IsWhiteSpace(ch)).ToArray()).ToUpperInvariant();
 
         // dane wejściowe -> tylko normalizacja
-        string supplierNip = DigitsOnly(nip);
-        string customerNip = DigitsOnly(buyerNip);
+        
         string ibanNorm = NormalizeIban(iban);
 
         // tokeny faktycznie obecne w szablonie
@@ -133,11 +123,11 @@ public static class OnlineSessionUtils
 
         // wymagane wartości JEŚLI token jest w szablonie (bez walidacji)
         if (xml.Contains("#nip#", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(supplierNip))
-            throw new ArgumentException("Template requires #nip# but 'nip' is null/empty.", nameof(nip));
+            throw new ArgumentException("Template requires #nip# but 'nip' is null/empty.", nameof(supplierNip));
         if (xml.Contains("#supplier_nip#", StringComparison.Ordinal) && string.IsNullOrWhiteSpace(supplierNip))
-            throw new ArgumentException("Template requires #supplier_nip# but 'nip' is null/empty.", nameof(nip));
+            throw new ArgumentException("Template requires #supplier_nip# but 'nip' is null/empty.", nameof(supplierNip));
         if (needBuyerNip && string.IsNullOrWhiteSpace(customerNip))
-            throw new ArgumentException("Template requires #buyer_nip# but 'buyerNip' is null/empty.", nameof(buyerNip));
+            throw new ArgumentException("Template requires #buyer_nip# but 'buyerNip' is null/empty.", nameof(customerNip));
         if (needBuyerRef && string.IsNullOrWhiteSpace(buyerReference))
             throw new ArgumentException("Template requires #buyer_reference# but 'buyerReference' is null/empty.", nameof(buyerReference));
         if (needIban && string.IsNullOrWhiteSpace(ibanNorm))

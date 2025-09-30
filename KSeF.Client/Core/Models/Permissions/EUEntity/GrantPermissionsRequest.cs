@@ -5,7 +5,7 @@ public class GrantPermissionsRequest
     public SubjectIdentifier SubjectIdentifier { get; set; }
     public ContextIdentifier ContextIdentifier { get; set; }
     public string Description { get; set; }
-    public string SubjectName { get; set; }
+    public string EuEntityName { get; set; }
 }
 
 public partial class SubjectIdentifier

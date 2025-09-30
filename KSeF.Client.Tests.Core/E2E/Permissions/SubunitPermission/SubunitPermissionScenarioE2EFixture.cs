@@ -20,14 +20,13 @@ public class SubunitPermissionsScenarioE2EFixture
         Value = MiscellaneousUtils.GetRandomNip()
     };
 
-    public SubjectIdentifier SubjectIdentifier { get; } = new SubjectIdentifier
+    public Client.Core.Models.Permissions.SubUnit.SubjectIdentifier SubjectIdentifier { get; } = new Client.Core.Models.Permissions.SubUnit.SubjectIdentifier
     {
         Type = SubjectIdentifierType.Nip,
         Value = MiscellaneousUtils.GetRandomNip()
     };
 
     public OperationResponse GrantResponse { get; set; }
-    public List<OperationResponse> RevokeResponse { get; set; } = new();
-    public int ExpectedPermissionsAfterRevoke { get; internal set; }
+    public List<PermissionsOperationStatusResponse> RevokeStatusResults { get; set; } = new();
     public PagedPermissionsResponse<Client.Core.Models.Permissions.SubunitPermission> SearchResponse { get; internal set; }
 }

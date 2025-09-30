@@ -11,7 +11,7 @@ namespace KSeF.DemoWebApp.Controllers;
 public class EUEntityRepresentativePermissionsController(IKSeFClient ksefClient) : ControllerBase
 {
     [HttpPost("grant-eu-entity-representative-permissions")]
-    public async Task<ActionResult<OperationResponse>> GrantPermissionsEntity(string accessToken, SubjectIdentifier subjectIdentifier, CancellationToken cancellationToken)
+    public async Task<ActionResult<OperationResponse>> GrantPermissionsEntity(string accessToken, Client.Core.Models.Permissions.EUEntityRepresentative.SubjectIdentifier subjectIdentifier, CancellationToken cancellationToken)
     {
         var request = GrantEUEntityRepresentativePermissionsRequestBuilder
             .Create()

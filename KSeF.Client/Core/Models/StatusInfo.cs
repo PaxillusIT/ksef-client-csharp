@@ -1,6 +1,6 @@
 using KSeF.Client.Core.Models.Sessions.ActiveSessions;
 
-namespace KSeFClient.Core.Models;
+namespace KSeF.Client.Core.Models;
 
 public class StatusInfo
 {

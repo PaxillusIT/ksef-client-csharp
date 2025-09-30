@@ -16,8 +16,6 @@ using KSeF.Client.Core.Models.Sessions.ActiveSessions;
 using KSeF.Client.Core.Models.Sessions.BatchSession;
 using KSeF.Client.Core.Models.Sessions.OnlineSession;
 using KSeF.Client.Core.Models;
-using KSeFClient.Core.Models.Sessions;
-using KSeFClient.Core.Models;
 
 namespace KSeF.Client;
 

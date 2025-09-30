@@ -3,7 +3,6 @@ using KSeF.Client.Core.Models.Authorization;
 using KSeF.Client.Api.Builders.Auth;
 using KSeF.Client.Core.Models;
 using System.Security.Cryptography.X509Certificates;
-using KSeFClient.Core.Models;
 
 namespace KSeF.Client.Tests.Utils;
 public static class AuthenticationUtils
@@ -36,7 +35,7 @@ public static class AuthenticationUtils
         System.Security.Cryptography.X509Certificates.X509Certificate2 certificate =
             CertificateUtils.GetPersonalCertificate("A", "R", "TINPL", nip, "A R");
 
-        string signedXml = await signatureService.SignAsync(unsignedXml, certificate);
+        string signedXml = signatureService.Sign(unsignedXml, certificate);
 
         SignatureResponse authOperationInfo = await ksefClient
           .SubmitXadesAuthRequestAsync(signedXml, false, CancellationToken.None);
@@ -104,7 +103,7 @@ public static class AuthenticationUtils
 
         X509Certificate2 certificate = CertificateUtils.GetPersonalCertificate("A", "R", "TINPL", nip, "A R");
 
-        string signedXml = await signatureService.SignAsync(unsignedXml, certificate);
+        string signedXml = signatureService.Sign(unsignedXml, certificate);
 
         SignatureResponse authOperationInfo = await ksefClient
           .SubmitXadesAuthRequestAsync(signedXml, false, CancellationToken.None);
@@ -187,7 +186,7 @@ public static class AuthenticationUtils
 
         string unsignedXml = AuthTokenRequestSerializer.SerializeToXmlString(authTokenRequest);
 
-        string signedXml = await signatureService.SignAsync(unsignedXml, certificate);
+        string signedXml = signatureService.Sign(unsignedXml, certificate);
 
         SignatureResponse authOperationInfo = await ksefClient
           .SubmitXadesAuthRequestAsync(signedXml, false, CancellationToken.None);

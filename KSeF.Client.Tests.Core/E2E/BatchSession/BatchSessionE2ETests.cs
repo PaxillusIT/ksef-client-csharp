@@ -2,7 +2,7 @@ using KSeF.Client.Core.Interfaces;
 using KSeF.Client.Core.Models.Invoices;
 using KSeF.Client.Tests.Utils;
 using KSeF.Client.Tests.Utils.Upo;
-using KSeFClient.Core.Models.Sessions;
+using KSeF.Client.Core.Models.Sessions;
 
 namespace KSeF.Client.Tests.Core.E2E.BatchSession;
 

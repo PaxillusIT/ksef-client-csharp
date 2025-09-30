@@ -1,9 +1,10 @@
+using KSeF.Client.Core.Exceptions;
 using KSeF.Client.Core.Models.Authorization;
 using KSeF.Client.Core.Models.Invoices;
 using KSeF.Client.Core.Models.Sessions;
 using KSeF.Client.Core.Models.Sessions.OnlineSession;
 using KSeF.Client.Tests.Utils;
-using KSeFClient.Core.Models.Sessions;
+using KSeF.Client.Core.Models.Sessions;
 
 namespace KSeF.Client.Tests.Core.E2E.Invoice;
 
@@ -101,7 +102,7 @@ public class InvoiceE2ETests : TestBase
 
         // 7. Pobierz fakturę po jej numerze KSeF - dostępne tylko dla wystawcy faktury (sprzedawcy)
         string invoice = string.Empty;
-        int tryCount = 5;
+        int tryCount = 10;
         bool isSuccessfullTry = false;
         do
         {
@@ -110,13 +111,19 @@ public class InvoiceE2ETests : TestBase
                 invoice = await KsefClient.GetInvoiceAsync(ksefInvoiceNumber, AccessToken);
                 isSuccessfullTry = true;
             }
-            catch (Exception)
+            catch (KsefApiException e)
             {
                 tryCount--;
+                await Task.Delay(SleepTime);
+            }
+            catch (Exception e)
+            {
+                tryCount--;
+                await Task.Delay(SleepTime);
             }
             await Task.Delay(SleepTime);
-        } while (!isSuccessfullTry && tryCount >0 );
-        Assert.True(!string.IsNullOrEmpty(invoice));
+        } while (!isSuccessfullTry && tryCount > 0);
+        Assert.True(!string.IsNullOrWhiteSpace(invoice));
 
         await Task.Delay(SleepTime * 3);
         // 8. Zaloguj się jako nabywca 
@@ -146,14 +153,10 @@ public class InvoiceE2ETests : TestBase
             Filters = query
         };
 
-        ExportInvoicesResponse invoicesForBuyerResponse;
-        do
-        {
-            await Task.Delay(SleepTime * 10);
-            invoicesForBuyerResponse = await KsefClient.ExportInvoicesAsync(invoiceExportRequest,
-            buyerAuthInfo.AccessToken.Token);
+        await Task.Delay(SleepTime * 10);
+        ExportInvoicesResponse invoicesForBuyerResponse = await KsefClient.ExportInvoicesAsync(invoiceExportRequest,
+        buyerAuthInfo.AccessToken.Token);
 
-        } while (invoicesForBuyerResponse.Status == null);
         await Task.Delay(SleepTime * 10);
 
         InvoiceExportStatusResponse exportStatus = await KsefClient.GetInvoiceExportStatusAsync(invoicesForBuyerResponse.OperationReferenceNumber,

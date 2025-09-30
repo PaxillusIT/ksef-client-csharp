@@ -5,7 +5,6 @@ using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
-
 namespace KSeF.Client.Api.Services;
 
 /// <inheritdoc />
@@ -14,13 +13,13 @@ public class CryptographyService : ICryptographyService
     // JEDYNA zewnętrzna zależność: delegat do pobrania listy certów
     private readonly Func<CancellationToken, Task<ICollection<PemCertificateInfo>>> _fetcher;
 
-    // Polityka odświeżania (to NIE jest TTL z configu)
     private readonly TimeSpan _staleGrace = TimeSpan.FromHours(6);  // przy chwilowej awarii
 
     // Cache
-    private CertificateMaterials? _materials; // ustawiany atomowo
+    private CertificateMaterials? _materials;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private Timer? _refreshTimer;
+    private bool isInitialized;
 
     public CryptographyService(
         Func<CancellationToken, Task<ICollection<PemCertificateInfo>>> fetcher)
@@ -47,13 +46,6 @@ public class CryptographyService : ICryptographyService
     {
         await RefreshAsync(ct);
         ScheduleNextRefresh();
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _refreshTimer?.Dispose();
-        _gate.Dispose();
-        return ValueTask.CompletedTask;
     }
     
     /// <inheritdoc />
@@ -91,8 +83,8 @@ public class CryptographyService : ICryptographyService
         ICryptoTransform encryptor = aes.CreateEncryptor();
 
         using Stream input = BinaryData.FromBytes(content).ToStream();
-        using MemoryStream output = new ();
-        using CryptoStream cryptoWriter = new (output, encryptor, CryptoStreamMode.Write);
+        using MemoryStream output = new();
+        using CryptoStream cryptoWriter = new(output, encryptor, CryptoStreamMode.Write);
         input.CopyTo(cryptoWriter);
         cryptoWriter.FlushFinalBlock();
 
@@ -111,10 +103,29 @@ public class CryptographyService : ICryptographyService
         aes.IV = iv;
 
         using ICryptoTransform encryptor = aes.CreateEncryptor();
-        using CryptoStream cryptoStream = new (output, encryptor, CryptoStreamMode.Write, leaveOpen: true);
+        using CryptoStream cryptoStream = new(output, encryptor, CryptoStreamMode.Write, leaveOpen: true);
         input.CopyTo(cryptoStream);
         cryptoStream.FlushFinalBlock();
         output.Position = 0;
+    }
+
+    /// <inheritdoc />
+    public async Task EncryptStreamWithAES256Async(Stream input, Stream output, byte[] key, byte[] iv, CancellationToken ct = default)
+    {
+        using Aes aes = Aes.Create();
+        aes.KeySize = 256;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        aes.BlockSize = 16 * 8;
+        aes.Key = key;
+        aes.IV = iv;
+
+        using ICryptoTransform encryptor = aes.CreateEncryptor();
+        using CryptoStream cryptoStream = new(output, encryptor, CryptoStreamMode.Write, leaveOpen: true);
+        await input.CopyToAsync(cryptoStream, 81920, ct).ConfigureAwait(false);
+        await cryptoStream.FlushFinalBlockAsync(ct).ConfigureAwait(false);
+        if (output.CanSeek)
+            output.Position = 0;
     }
 
     /// <inheritdoc />
@@ -133,7 +144,6 @@ public class CryptographyService : ICryptographyService
         var csrDer = request.CreateSigningRequest();
         return (Convert.ToBase64String(csrDer), Convert.ToBase64String(privateKey));
     }
-
 
     /// <inheritdoc />
     public FileMetadata GetMetaData(byte[] file)
@@ -182,7 +192,7 @@ public class CryptographyService : ICryptographyService
         using ECDiffieHellman ecdhEphemeral = ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
         var sharedSecret = ecdhEphemeral.DeriveKeyMaterial(ecdhReceiver.PublicKey);
 
-        using AesGcm aes = new (sharedSecret, AesGcm.TagByteSizes.MaxSize);
+        using AesGcm aes = new(sharedSecret, AesGcm.TagByteSizes.MaxSize);
         byte[] nonce = new byte[AesGcm.NonceByteSizes.MaxSize];
         RandomNumberGenerator.Fill(nonce);
         byte[] cipherText = new byte[content.Length];
@@ -266,9 +276,11 @@ public class CryptographyService : ICryptographyService
 
     private async Task RefreshAsync(CancellationToken ct)
     {
+        if (isInitialized) return;
         await _gate.WaitAsync(ct);
         try
         {
+            if (isInitialized) return;
             var list = await _fetcher(ct);
             var m = BuildMaterials(list);
 
@@ -344,7 +356,7 @@ public class CryptographyService : ICryptographyService
     private static InvalidOperationException NotReady() =>
         new("Materiały kryptograficzne nie są jeszcze zainicjalizowane. " +
             "Wywołaj WarmupAsync() na starcie aplikacji lub ForceRefreshAsync().");
-    
+
     /// <inheritdoc />
     public (string, string) GenerateCsrWithECDSA(CertificateEnrollmentsInfoResponse certificateInfo)
     {
@@ -385,7 +397,7 @@ public class CryptographyService : ICryptographyService
             AddRdn("2.5.4.97", certificateInfo.OrganizationIdentifier, UniversalTagNumber.UTF8String);
             AddRdn("2.5.4.6", certificateInfo.CountryName, UniversalTagNumber.PrintableString);
             AddRdn("2.5.4.5", certificateInfo.SerialNumber, UniversalTagNumber.PrintableString);
-            AddRdn("2.5.4.45", certificateInfo.UniqueIdentifier, UniversalTagNumber.UTF8String);   
+            AddRdn("2.5.4.45", certificateInfo.UniqueIdentifier, UniversalTagNumber.UTF8String);
         }
 
         return new X500DistinguishedName(asnWriter.Encode());

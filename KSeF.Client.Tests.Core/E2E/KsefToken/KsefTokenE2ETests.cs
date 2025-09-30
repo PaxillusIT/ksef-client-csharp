@@ -1,7 +1,6 @@
 ﻿using KSeF.Client.Core.Models;
 using KSeF.Client.Core.Models.Authorization;
 using KSeF.Client.Tests.Utils;
-using KSeFClient.Core.Models;
 
 namespace KSeF.Client.Tests.Core.E2E.KsefToken;
 

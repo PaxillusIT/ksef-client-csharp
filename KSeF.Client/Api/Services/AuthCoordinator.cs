@@ -2,7 +2,6 @@ using KSeF.Client.Core.Interfaces;
 using KSeF.Client.Core.Models.Authorization;
 using KSeF.Client.Api.Builders.Auth;
 using System.Text;
-using KSeFClient.Core.Models;
 using KSeF.Client.Core.Models;
 
 namespace KSeF.Client.Api.Services;

@@ -212,12 +212,12 @@ namespace KSeF.Client.Tests.Features
 
         [Theory]
         [InlineData(9)]
-        [InlineData(101)]
+        [InlineData(251)]
         [InlineData(999)]
         [Trait("Category", "InvoiceMetadata")]
         [Trait("ErrorType", "ValidationError")]
         [Trait("Field", "pageSize")]
-        [Trait("Condition", "outside 10-100")]
+        [Trait("Condition", "outside 10-250")]
         [Trait("Scenario", "QueryInvoiceMetadataAsync throws when pageSize is out of allowed range")]
         public async Task GivenInvoiceMetadataQuery_WithInvalidPageSize_ShouldThrowError(int pageSize)
         {

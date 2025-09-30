@@ -11,8 +11,8 @@ public class EuEntityPermissionE2ETests : TestBase
 {   
     private const string EuEntitySubjectName = "Sample Subject Name";
     private const string EuEntityDescription = "E2E EU Entity Permission Test";
-    private const string StatusCode400Description = "Operacja zakończona niepowodzeniem";
-    private const string StatusCode400FirstDetails = "Permission cannot be revoked.";
+    private const int OperationSuccessfulStatusCode = 200;
+
     private readonly EuEntityPermissionsQueryRequest EuEntityPermissionsQueryRequest =
             new EuEntityPermissionsQueryRequest { /* e.g. filtrowanie */ };
     private readonly EuEntityPermissionScenarioE2EFixture TestFixture;
@@ -70,6 +70,14 @@ public class EuEntityPermissionE2ETests : TestBase
         #region Odwołaj uprawnienia
         // Act
         await RevokePermissionsAsync();
+
+        Assert.NotNull(TestFixture.RevokeStatusResults);
+        Assert.NotEmpty(TestFixture.RevokeStatusResults);
+        Assert.Equal(TestFixture.RevokeStatusResults.Count, TestFixture.SearchResponse.Permissions.Count);
+        Assert.All(TestFixture.RevokeStatusResults, r =>
+            Assert.True(r.Status.Code == OperationSuccessfulStatusCode,
+                $"Operacja cofnięcia uprawnień nie powiodła się: {r.Status.Description}, szczegóły: [{string.Join(",", r.Status.Details ?? Array.Empty<string>())}]")
+        );
         #endregion
 
         await Task.Delay(SleepTime);
@@ -82,14 +90,7 @@ public class EuEntityPermissionE2ETests : TestBase
 
         // Assert
         Assert.NotNull(TestFixture.SearchResponse);
-        if (TestFixture.ExpectedPermissionsAfterRevoke > 0)
-        {
-            Assert.True(TestFixture.SearchResponse.Permissions.Count == TestFixture.ExpectedPermissionsAfterRevoke);
-        }
-        else
-        {
-            Assert.Empty(TestFixture.SearchResponse.Permissions);
-        }
+        Assert.Empty(TestFixture.SearchResponse.Permissions);
         #endregion
     }
 
@@ -139,27 +140,20 @@ public class EuEntityPermissionE2ETests : TestBase
     /// </summary>
     private async Task RevokePermissionsAsync()
     {
+        List<OperationResponse> revokeResponses = new List<Client.Core.Models.Permissions.OperationResponse>();
+
         foreach (Client.Core.Models.Permissions.EuEntityPermission permission in TestFixture.SearchResponse.Permissions)
         {
-            OperationResponse operationResponse = await KsefClient
-                .RevokeCommonPermissionAsync(permission.Id, accessToken, CancellationToken);
-
-            TestFixture.RevokeResponse.Add(operationResponse);
-
-            await Task.Delay(SleepTime);
+            Client.Core.Models.Permissions.OperationResponse operationResponse = await KsefClient.RevokeCommonPermissionAsync(permission.Id, accessToken, CancellationToken.None);
+            revokeResponses.Add(operationResponse);
         }
 
-        foreach (OperationResponse operationResponse in TestFixture.RevokeResponse)
+        // Sprawdzenie statusów wszystkich operacji
+        foreach (Client.Core.Models.Permissions.OperationResponse revokeResponse in revokeResponses)
         {
-            PermissionsOperationStatusResponse statusResponse = 
-                await KsefClient.OperationsStatusAsync(operationResponse.OperationReferenceNumber, accessToken);
-
-            if (statusResponse.Status.Code == 400 
-                && statusResponse.Status.Description == StatusCode400Description
-                && statusResponse.Status.Details.First() == StatusCode400FirstDetails)
-            {
-                TestFixture.ExpectedPermissionsAfterRevoke += 1;
-            }
+            await Task.Delay(SleepTime);
+            Client.Core.Models.Permissions.PermissionsOperationStatusResponse status = await KsefClient.OperationsStatusAsync(revokeResponse.OperationReferenceNumber, accessToken);
+            TestFixture.RevokeStatusResults.Add(status);
         }
     }
 }   

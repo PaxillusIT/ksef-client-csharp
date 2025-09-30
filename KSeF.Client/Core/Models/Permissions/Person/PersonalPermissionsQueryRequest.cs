@@ -19,4 +19,5 @@ public partial class ContextIdentifier
 public enum ContextIdentifierType
 {
     Nip,
+    InternalId,
 }

@@ -11,7 +11,7 @@ using EntityStandardPermissionType = KSeF.Client.Core.Models.Permissions.Entity.
 using PersonSubjectIdentifier = KSeF.Client.Core.Models.Permissions.Person.SubjectIdentifier;
 using PersonSubjectIdentifierType = KSeF.Client.Core.Models.Permissions.Person.SubjectIdentifierType;
 using StandardPermissionType = KSeF.Client.Core.Models.Permissions.Person.StandardPermissionType;
-using KSeFClient.Core.Models;
+using KSeF.Client.Core.Models;
 
 namespace KSeF.Client.Tests.Features
 {
@@ -74,7 +74,6 @@ namespace KSeF.Client.Tests.Features
             var challengeResponse = await KsefClient
                 .GetAuthChallengeAsync();
 
-
             var authTokenRequest = AuthTokenRequestBuilder
                .Create()
                .WithChallenge(challengeResponse.Challenge)
@@ -100,7 +99,7 @@ namespace KSeF.Client.Tests.Features
                     .WithSerialNumber("TINPL-" + delegateNip)
                     .WithCommonName("Jan Kowalski")
                     .Build();
-            var signedXml = await SignatureService.SignAsync(unsignedXml, certificate);
+            var signedXml = SignatureService.Sign(unsignedXml, certificate);
             await Task.Delay(1500);
 
             var authOperationInfo = await KsefClient
@@ -166,7 +165,7 @@ namespace KSeF.Client.Tests.Features
                 .WithCommonName("A R")
                 .Build();
 
-            var signedXml = await SignatureService.SignAsync(unsignedXml, certificate);
+            var signedXml = SignatureService.Sign(unsignedXml, certificate);
             await Task.Delay(1500);
 
             var authOperationInfo = await KsefClient
@@ -218,7 +217,7 @@ namespace KSeF.Client.Tests.Features
                .WithCommonName("A R")
                .Build();
 
-            var signedXml = await SignatureService.SignAsync(unsignedXml, certificate);
+            var signedXml = SignatureService.Sign(unsignedXml, certificate);
 
             var ex = await Assert.ThrowsAsync<KsefApiException>(async () =>
             {
@@ -244,13 +243,14 @@ namespace KSeF.Client.Tests.Features
                    .WithCommonName("Jan Kowalski")
                    .Build();
 
-            var signedXml = await SignatureService.SignAsync(unsignedXml, certificate);
+            var signedXml = SignatureService.Sign(unsignedXml, certificate);
             var ex = await Assert.ThrowsAsync<KsefApiException>(async () =>
             {
                 var authOperationInfo = await KsefClient
               .SubmitXadesAuthRequestAsync(signedXml, false, CancellationToken.None);
             });
         }
+
         [Fact]
         [Trait("Scenario", "Niepoprawne uwierzytelnienia - zły nip w podpisie")]
         public async Task GivenOwnerContext_WhenAuthenticatingWithWrongNip_ThenError()
@@ -279,7 +279,7 @@ namespace KSeF.Client.Tests.Features
                    .WithCommonName("Jan Kowalski")
                    .Build();
 
-            var signedXml = await SignatureService.SignAsync(unsignedXml, certificate);
+            var signedXml = SignatureService.Sign(unsignedXml, certificate);
 
             var ex = await Assert.ThrowsAsync<KsefApiException>(async () =>
             {
@@ -316,10 +316,7 @@ namespace KSeF.Client.Tests.Features
                    .WithCommonName("Jan Kowalski")
                    .Build();
 
-            var ex = await Assert.ThrowsAsync<ArgumentNullException>(async () =>
-            {
-                var signedXml = await SignatureService.SignAsync(null, certificate);
-            });
+            Assert.Throws<ArgumentException>(() => SignatureService.Sign(string.Empty, certificate));
         }
 
         private static async Task<AuthStatus> EnsureAuthenticationCompletedAsync(
@@ -362,7 +359,7 @@ namespace KSeF.Client.Tests.Features
 
             return status;
         }
-       private static HashSet<string> GetPerAsStringSet(string jwtToken)
+        private static HashSet<string> GetPerAsStringSet(string jwtToken)
         {
             var jwt = new JwtSecurityTokenHandler().ReadJwtToken(jwtToken);
 
@@ -380,8 +377,8 @@ namespace KSeF.Client.Tests.Features
             return perClaims.ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
-      private static HashSet<TEnum> GetPerAsEnumSet<TEnum>(string jwtToken)
-            where TEnum : struct, Enum
+        private static HashSet<TEnum> GetPerAsEnumSet<TEnum>(string jwtToken)
+              where TEnum : struct, Enum
         {
             var jwt = new JwtSecurityTokenHandler().ReadJwtToken(jwtToken);
             var perValues = jwt.Claims.Where(c => c.Type == "per").Select(c => c.Value).ToArray();

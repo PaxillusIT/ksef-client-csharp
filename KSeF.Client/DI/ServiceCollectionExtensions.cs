@@ -1,9 +1,11 @@
-using System.Net.Http.Headers;
 using KSeF.Client.Api.Services;
 using KSeF.Client.Core.Interfaces;
+using KSeF.Client.Core.Models.Certificates;
 using KSeF.Client.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Net.Http.Headers;
 namespace KSeF.Client.DI;
 
 /// <summary>
@@ -14,7 +16,13 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Rejestruje wszystkie potrzebne serwisy do korzystania z KSeF
     /// </summary>
-    public static IServiceCollection AddKSeFClient(this IServiceCollection services, Action<KSeFClientOptions> configure)
+    /// <param name="services">Rozszerzany interfejs</param>
+    /// <param name="configure">Opcje klienta KSeF</param>
+    /// <param name="pemCertificatesFetcher">Delegat służacy do pobrania publicznych certyfikatów KSeF</param>
+    /// <exception cref="ArgumentException"></exception>
+    public static IServiceCollection AddKSeFClient(this IServiceCollection services,
+        Action<KSeFClientOptions> configure,
+        Func<IServiceProvider, CancellationToken, Task<ICollection<PemCertificateInfo>>> pemCertificatesFetcher = null)
     {
         var options = new KSeFClientOptions();
         configure(options);
@@ -27,7 +35,7 @@ public static class ServiceCollectionExtensions
             .AddHttpClient<IRestClient, RestClient>(http =>
             {
                 http.BaseAddress = new Uri(options.BaseUrl);
-                if (options.CustomHeaders.Any())
+                if (options.CustomHeaders != null && options.CustomHeaders.Count > 0)
                 {
                     foreach (var header in options.CustomHeaders)
                         http.DefaultRequestHeaders.Add(header.Key, header.Value);
@@ -49,29 +57,36 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IKSeFClient, Http.KSeFClient>();
         services.AddScoped<IAuthCoordinator, AuthCoordinator>();
         services.AddHostedService<CryptographyWarmupHostedService>();
-        services.AddSingleton<ICryptographyService, CryptographyService>(sp =>
+        services.TryAddSingleton<ICryptographyService>(serviceProvider =>
         {
-
-            return new CryptographyService(async ct =>
+            if (pemCertificatesFetcher != null)
             {
-                using var scope = sp.CreateScope(); // krótki scope do utworzenia IKSeFClient
-                var ksefCLient = scope.ServiceProvider.GetRequiredService<IKSeFClient>();
-                return await ksefCLient.GetPublicCertificatesAsync(ct);
-            });
+                return new CryptographyService(cancellationToken => pemCertificatesFetcher(serviceProvider, cancellationToken));
+            }
+            else
+            {
+                return new CryptographyService(async cancellationToken =>
+                {
+                    using var scope = serviceProvider.CreateScope();
+                    var ksefCLient = scope.ServiceProvider.GetRequiredService<IKSeFClient>();
+                    return await ksefCLient.GetPublicCertificatesAsync(cancellationToken);
+                });
+            }
         });
-        
-        
+
         services.AddScoped<ISignatureService, SignatureService>();
         services.AddScoped<IQrCodeService, QrCodeService>();
+        services.AddSingleton<IPersonTokenService, PersonTokenService>();
         services.AddScoped<IVerificationLinkService, VerificationLinkService>();
 
         services.AddLocalization(options =>
         {
             options.ResourcesPath = "Resources";
         });
-        services.Configure<RequestLocalizationOptions>(opts =>
+
+        services.Configure<RequestLocalizationOptions>(options =>
         {
-            opts.SetDefaultCulture("pl-PL")
+            options.SetDefaultCulture("pl-PL")
                 .AddSupportedCultures("pl-PL", "en-US")
                 .AddSupportedUICultures("pl-PL", "en-US");
         });
